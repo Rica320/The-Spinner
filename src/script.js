@@ -20,13 +20,8 @@ canvasWheel.style.left = -1
 canvasWheel.style.zIndex = -1
 document.body.append(canvasWheel)
 
-console.log(canvasWheel)
-
 // Scene
 const scene = new THREE.Scene()
-
-// Loaders
-const textureLoader = new THREE.TextureLoader()
 
 /**
  * Sizes
@@ -195,7 +190,7 @@ function createSpinningWheel(canvas, people) {
 
   const wheel = {
     spin() {
-      if (!spinning) {
+      if (!spinning && people) {
         spinVelocity = Math.random() * 0.3 + 0.35;
         spinning = true;
       }
@@ -210,7 +205,6 @@ function createSpinningWheel(canvas, people) {
 
 
 const wheel = createSpinningWheel(canvasWheel, people);
-wheel.spin()
 window.setTimeout(
     () => console.log(wheel.getWinner()), 2000
 )
@@ -276,7 +270,6 @@ function showWinner(person){
 const updateDatasetWinnerFrequency = (winner) => {
     const li = document.querySelector(`[data-id="${winner.id}"]`);
     li.dataset.frequency = winner.frequency
-    console.log(li.dataset)
 }
 
 wheel.onFinish = (winner) => {
@@ -288,9 +281,6 @@ wheel.onFinish = (winner) => {
     updateDatasetWinnerFrequency(winner)
     showWinner(winner);
     savePeople()
-
-  // Later you can send this to Three.js
-  // example: spawnWinnerAvatar(winner)
 };
 
 
@@ -351,7 +341,6 @@ displacement.interactivePlane = new THREE.Mesh(
 )
 scene.add(displacement.interactivePlane)
 displacement.interactivePlane.visible = false
-
 
 // Raycaster
 displacement.raycaster = new THREE.Raycaster()
