@@ -1,4 +1,4 @@
-# Three.js Journey
+# Spinner app
 
 ## Setup
 Download [Node.js](https://nodejs.org/en/download/).
