@@ -63,6 +63,19 @@ function loadPeople() {
 
 const people = loadPeople();
 
+document.addEventListener("personAdded", (event) => {
+  const person = event.detail;
+
+  people.push(person);
+
+  spinWheelTexture.needsUpdate = true;
+});
+
+document.addEventListener("personRemoved", (event) => {
+  const index = people.findIndex(p => p.id === event.detail.id);
+  if (index !== -1) people.splice(index, 1);
+});
+
 function createSpinningWheel(canvas, people) {
   const ctx = canvas.getContext("2d");
   const padding = 20;
@@ -117,7 +130,7 @@ function createSpinningWheel(canvas, people) {
         ctx.translate(centerX, centerY);
         ctx.rotate(startAngle + arcs[i] / 2);
         ctx.fillStyle = "#000";
-        ctx.font = `${Math.floor(radius / 10) + 10}px sans-serif`;
+        ctx.font = `${Math.floor(radius / 10) + 10}px DM-Mono`;
         ctx.textAlign = "right";
         ctx.fillText(person.name, radius - radius * 0.1, 5);
         ctx.restore();

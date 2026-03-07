@@ -134,7 +134,15 @@
 
     li.querySelector('.remove-btn').onclick = () => {
       li.classList.add('removing');
-      setTimeout(() => { li.remove(); updateCount(); savePeople(); }, 200);
+      setTimeout(() => { 
+        li.remove(); 
+        updateCount(); 
+        savePeople(); 
+        // 🔔 trigger event
+        document.dispatchEvent(
+            new CustomEvent("personRemoved", { detail: {"id": li.dataset.id }})
+        );
+    }, 200);
     };
 
     document.getElementById("peopleList").appendChild(li);
@@ -151,22 +159,32 @@
   function addPerson() {
     const name = document.getElementById("nameInput").value.trim();
     if (!name) {
-      const inp = document.getElementById("nameInput");
-      inp.focus();
-      inp.style.borderColor = '#fff';
-      setTimeout(() => inp.style.borderColor = '', 600);
-      return;
+        const inp = document.getElementById("nameInput");
+        inp.focus();
+        inp.style.borderColor = '#fff';
+        setTimeout(() => inp.style.borderColor = '', 600);
+        return;
     }
-    const color = colorInput.value;
-    const id    = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
-    renderPerson({ id, name, color, frequency: 0 }, true);
+    const color = colorInput.value;
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+    const person = { id, name, color, frequency: 0 };
+
+    renderPerson(person, true);
 
     document.getElementById("nameInput").value = "";
     colorIdx++;
     colorInput.value = COLORS[colorIdx % COLORS.length];
+
     updateCount();
     savePeople();
+
+    // 🔔 trigger event
+    document.dispatchEvent(
+        new CustomEvent("personAdded", { detail: person })
+    );
+
     document.getElementById("nameInput").focus();
   }
 
