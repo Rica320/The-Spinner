@@ -2,11 +2,15 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import particlesVertexShader from "./shaders/particles/vertex.glsl";
 import particlesFragmentShader from "./shaders/particles/fragment.glsl";
+import mercedesStarFragmentShader from "./shaders/mercedes/fragment.glsl";
+import mercedesStarVertexShader from "./shaders/mercedes/vertex.glsl";
+
 import {
   EffectComposer,
   RenderPass,
   UnrealBloomPass,
 } from "three/examples/jsm/Addons.js";
+import { texture } from "three/tsl";
 
 /**
  * Base
@@ -26,6 +30,8 @@ document.body.append(canvasWheel);
 
 // Scene
 const scene = new THREE.Scene();
+
+const textureLoader = new THREE.TextureLoader();
 
 /**
  * Sizes
@@ -343,6 +349,10 @@ scene.add(camera);
 // Controls
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
+controls.minDistance = 2;   // closest zoom
+controls.maxDistance = 40;  // farthest zoom
+controls.minAzimuthAngle = -Math.PI / 2 - 0.5;
+controls.maxAzimuthAngle = Math.PI / 2 + 0.5;
 
 /**
  * Renderer
@@ -473,6 +483,71 @@ composer.addPass(
 const clock = new THREE.Clock();
 
 /**
+ * Starts Particles
+ */
+const starsCount = 2000;
+const starsGeometry = new THREE.BufferGeometry();
+const starsPositions = new Float32Array(starsCount * 3);
+const starsColor = new Float32Array(starsCount * 3);
+const starsSizes = new Float32Array(starsCount);
+const starsOpacities = new Float32Array(starsCount);
+
+
+const mercedesStarTexture = textureLoader.load("./star-mercedes.png")
+
+const mercedesColors =  [
+  [0.667, 0.667, 0.667],  // Silver
+  [0, 0, 0],              // Black
+  [0, 0.824, 0.745],      // Petronas Teal
+  [0.784, 0.063, 0.18]    // Deep Red
+];
+
+for (let i = 0; i < starsCount; i++) {
+  // Spread stars across a wide volume behind the scene
+  starsPositions[i * 3 + 0] = (Math.random() - 0.5) * 80; // x
+  starsPositions[i * 3 + 1] = (Math.random() - 0.5) * 50; // y
+  starsPositions[i * 3 + 2] = (Math.random() - 0.5) * 30 - 15; // z (behind)
+
+  const color = mercedesColors[i % mercedesColors.length]; // cycle through colors
+
+  starsColor[i * 3 + 0] = color[0] // R
+  starsColor[i * 3 + 1] = color[1] // G
+  starsColor[i * 3 + 2] = color[2] // B
+
+  starsSizes[i] = Math.random() + 1.0;
+  starsOpacities[i] = Math.random() * 0.80 + 0.9;
+}
+
+starsGeometry.setAttribute(
+  "position",
+  new THREE.BufferAttribute(starsPositions, 3),
+);
+starsGeometry.setAttribute(
+  "aColor",
+  new THREE.BufferAttribute(starsColor, 3),
+);
+starsGeometry.setAttribute("aSize", new THREE.BufferAttribute(starsSizes, 1));
+starsGeometry.setAttribute(
+  "aOpacity",
+  new THREE.BufferAttribute(starsOpacities, 1),
+);
+
+const starsMaterial = new THREE.ShaderMaterial({
+  vertexShader: mercedesStarVertexShader,
+  fragmentShader: mercedesStarFragmentShader,
+  uniforms: {
+    uTime: new THREE.Uniform(0),
+    uStarTexture: new THREE.Uniform(mercedesStarTexture),
+  },
+  transparent: true,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending,
+});
+
+const stars = new THREE.Points(starsGeometry, starsMaterial);
+scene.add(stars);
+
+/**
  * Animate
  */
 const tick = () => {
@@ -492,7 +567,8 @@ const tick = () => {
 
   const elapsedTime = clock.getElapsedTime();
   particlesMaterial.uniforms.uTime.value = elapsedTime;
-
+  starsMaterial.uniforms.uTime.value = elapsedTime;
+  
   if (intersections.length) {
     const uv = intersections[0].uv;
 
