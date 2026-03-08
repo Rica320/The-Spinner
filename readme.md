@@ -14,3 +14,4 @@ npm run dev
 # Build for production in the dist/ directory
 npm run build
 ```
+Link: [https://rica320.github.io/The-Spinner/](https://rica320.github.io/The-Spinner/)
