@@ -1,202 +1,297 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>People Panel</title>
-<link rel="stylesheet" href="./style.css">
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bebas+Neue&display=swap" rel="stylesheet">
-</head>
-    <canvas class="webgl"></canvas>
-    <script type="module" src="./script.js"></script>
-    <body class="min-h-screen flex items-center justify-center">
-
-    <div class="panel fixed left-8 top-1/2 -translate-y-1/2 w-72 bg-black border border-white rounded-2xl flex flex-col overflow-hidden shadow-[0_0_60px_rgba(255,255,255,0.08)]"
-        style="max-height: 80vh;">
-
-    <!-- HEADER -->
-    <div class="flex items-center justify-between px-5 py-4 border-b border-white/20">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>People Panel</title>
+    <link rel="stylesheet" href="./style.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bebas+Neue&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <canvas class="webgl"></canvas>
+  <script type="module" src="./script.js"></script>
+  <body class="min-h-screen flex items-center justify-center">
+    <div
+      class="panel fixed left-8 top-1/2 -translate-y-1/2 w-72 bg-black border border-white rounded-2xl flex flex-col overflow-hidden shadow-[0_0_60px_rgba(255,255,255,0.08)]"
+      style="max-height: 80vh"
+    >
+      <!-- HEADER -->
+      <div
+        class="flex items-center justify-between px-5 py-4 border-b border-white/20"
+      >
         <h2 class="panel-title text-white text-2xl tracking-widest">PEOPLE</h2>
-        <span id="countBadge" class="text-xs text-black bg-white rounded-full w-6 h-6 flex items-center justify-center font-medium transition-all">0</span>
-    </div>
+        <span
+          id="countBadge"
+          class="text-xs text-black bg-white rounded-full w-6 h-6 flex items-center justify-center font-medium transition-all"
+          >0</span
+        >
+      </div>
 
-    <!-- PEOPLE LIST -->
-    <ul id="peopleList" class="flex-1 overflow-y-auto py-1" style="min-height: 0;"></ul>
+      <!-- PEOPLE LIST -->
+      <ul
+        id="peopleList"
+        class="flex-1 overflow-y-auto py-1"
+        style="min-height: 0"
+      ></ul>
 
-    <!-- EMPTY STATE -->
-    <div id="emptyState" class="flex flex-col items-center justify-center py-8 px-4 text-white/20 text-xs tracking-widest text-center">
-        <div class="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center mb-3 text-lg">∅</div>
+      <!-- EMPTY STATE -->
+      <div
+        id="emptyState"
+        class="flex flex-col items-center justify-center py-8 px-4 text-white/20 text-xs tracking-widest text-center"
+      >
+        <div
+          class="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center mb-3 text-lg"
+        >
+          ∅
+        </div>
         NO PEOPLE YET
-    </div>
+      </div>
 
-    <!-- ADD FORM -->
-    <div class="px-4 py-4 border-t border-white/20 space-y-2">
+      <!-- ADD FORM -->
+      <div class="px-4 py-4 border-t border-white/20 space-y-2">
         <div class="flex gap-2 items-center">
-        <div class="relative flex-shrink-0">
-            <input type="color" id="colorInput" value="#e63946"
-            class="w-8 h-8 rounded-full cursor-pointer border-0 bg-transparent p-0 appearance-none"
-            style="width:32px;height:32px;border-radius:50%;padding:0;cursor:pointer;">
+          <div class="relative flex-shrink-0">
+            <input
+              type="color"
+              id="colorInput"
+              value="#e63946"
+              class="w-8 h-8 rounded-full cursor-pointer border-0 bg-transparent p-0 appearance-none"
+              style="
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                padding: 0;
+                cursor: pointer;
+              "
+            />
+          </div>
+          <input
+            id="nameInput"
+            placeholder="Name"
+            class="mono-input flex-1 bg-transparent border border-white/30 rounded-lg px-3 py-2 text-white text-xs placeholder-white/25 focus:border-white transition-colors"
+          />
         </div>
-        <input id="nameInput" placeholder="Name"
-            class="mono-input flex-1 bg-transparent border border-white/30 rounded-lg px-3 py-2 text-white text-xs placeholder-white/25 focus:border-white transition-colors"/>
-        </div>
-        <button onclick="addPerson()" class="add-btn w-full bg-white text-black rounded-lg py-2 text-xs font-medium tracking-widest hover:bg-white/90">
-        + ADD
+        <button
+          onclick="addPerson()"
+          class="add-btn w-full bg-white text-black rounded-lg py-2 text-xs font-medium tracking-widest hover:bg-white/90"
+        >
+          + ADD
         </button>
-    </div>
+      </div>
 
-    <!-- SPIN -->
-    <button id="spinBtn" onclick="toggleSpin()" class="spin-btn w-full bg-transparent text-white border border-white/30 rounded-lg py-2 text-xs font-medium">
-          <span class="btn-label">
-            <i class="spin-icon">↻</i>
-            <span id="spinLabel">SPIN</span>
-          </span>
-    </button>
-
+      <!-- SPIN -->
+      <button
+        id="spinBtn"
+        onclick="toggleSpin()"
+        class="spin-btn w-full bg-transparent text-white border border-white/30 rounded-lg py-2 text-xs font-medium"
+      >
+        <span class="btn-label">
+          <i class="spin-icon">↻</i>
+          <span id="spinLabel">SPIN</span>
+        </span>
+      </button>
     </div>
 
     <!-- MODAL -->
-    <div id="winnerModal" class="hidden fixed inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm z-50">
-
-        <div class="w-80 bg-black border border-white rounded-2xl overflow-hidden shadow-[0_0_60px_rgba(255,255,255,0.08)]">
-
-            <!-- HEADER -->
-            <div class="px-5 py-4 border-b border-white/20 text-center">
-            <h2 class="panel-title text-white text-2xl tracking-widest">THE WINNER IS</h2>
-            </div>
-
-            <!-- WINNER ITEM -->
-            <ul class="py-2">
-            <li id="winnerItem"
-            class="flex items-center justify-between px-4 py-3 border-b border-white/10">
-            </li>
-            </ul>
-
-            <!-- CLOSE -->
-            <div class="p-4 border-t border-white/20">
-            <button onclick="closeWinnerModal()"
-            class="w-full bg-white text-black rounded-lg py-2 text-xs font-medium tracking-widest hover:bg-white/90">
-            CLOSE
-            </button>
-            </div>
-
+    <div
+      id="winnerModal"
+      class="hidden fixed inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm z-50"
+    >
+      <div
+        class="w-80 bg-black border border-white rounded-2xl overflow-hidden shadow-[0_0_60px_rgba(255,255,255,0.08)]"
+      >
+        <!-- HEADER -->
+        <div class="px-5 py-4 border-b border-white/20 text-center">
+          <h2 class="panel-title text-white text-2xl tracking-widest">
+            THE WINNER IS
+          </h2>
         </div>
+
+        <!-- WINNER ITEM -->
+        <ul class="py-2">
+          <li
+            id="winnerItem"
+            class="flex items-center justify-between px-4 py-3 border-b border-white/10"
+          ></li>
+        </ul>
+
+        <!-- CLOSE -->
+        <div class="p-4 border-t border-white/20">
+          <button
+            onclick="closeWinnerModal()"
+            class="w-full bg-white text-black rounded-lg py-2 text-xs font-medium tracking-widest hover:bg-white/90"
+          >
+            CLOSE
+          </button>
+        </div>
+      </div>
     </div>
-<script>
-  const STORAGE_KEY = 'people-panel-v1';
-  const COLORS = ["#e63946","#f4a261","#2a9d8f","#457b9d","#9b5de5","#f15bb5","#00bbf9","#06d6a0","#ffbe0b","#fb5607"];
-  let colorIdx = 0;
-  const colorInput = document.getElementById("colorInput");
+    <script>
+      const STORAGE_KEY = "people-panel-v1";
+      const COLORS = [
+        "#e63946",
+        "#f4a261",
+        "#2a9d8f",
+        "#457b9d",
+        "#9b5de5",
+        "#f15bb5",
+        "#00bbf9",
+        "#06d6a0",
+        "#ffbe0b",
+        "#fb5607",
+      ];
+      let colorIdx = 0;
+      const colorInput = document.getElementById("colorInput");
 
-  // ── Storage helpers ──────────────────────────────────────────────
-  function loadPeople() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-    catch { return []; }
-  }
+      // ── Storage helpers ──────────────────────────────────────────────
+      function loadPeople() {
+        try {
+          return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        } catch {
+          return [];
+        }
+      }
 
-  function closeWinnerModal(){
-    document.getElementById("winnerModal").classList.add("hidden")
-    }
+      function closeWinnerModal() {
+        document.getElementById("winnerModal").classList.add("hidden");
+      }
 
-  function savePeople() {
-    const items = [...document.querySelectorAll('.person-item')].map(li => ({
-      id:    li.dataset.id,
-      name:  li.dataset.name,
-      color: li.dataset.color,
-      frequency: li.dataset.frequency
-    }));
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  }
+      function savePeople() {
+        const items = [...document.querySelectorAll(".person-item")].map(
+          (li) => ({
+            id: li.dataset.id,
+            name: li.dataset.name,
+            color: li.dataset.color,
+            frequency: li.dataset.frequency,
+          }),
+        );
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      }
 
-  // ── Render a single person li ────────────────────────────────────
-  function renderPerson({ id, name, color, frequency}, animate = true) {
-    const li = document.createElement("li");
-    li.className = "person-item flex items-center justify-between px-4 py-3 border-b border-white/10 last:border-0 group";
-    if (!animate) li.style.animation = 'none';
-    li.dataset.id    = id;
-    li.dataset.name  = name;
-    li.dataset.color = color;
-    li.dataset.frequency = frequency
+      // ── Render a single person li ────────────────────────────────────
+      function renderPerson({ id, name, color, frequency }, animate = true) {
+        const li = document.createElement("li");
+        li.className =
+          "person-item flex items-center justify-between px-4 py-3 border-b border-white/10 last:border-0 group";
+        if (!animate) li.style.animation = "none";
+        li.dataset.id = id;
+        li.dataset.name = name;
+        li.dataset.color = color;
+        li.dataset.frequency = frequency;
 
-    const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+        const initials = name
+          .split(" ")
+          .map((w) => w[0])
+          .join("")
+          .slice(0, 2)
+          .toUpperCase();
 
-    li.innerHTML = `
-      <div class="flex items-center gap-3">
-        <div class="color-dot w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 text-black"
-             style="background:${color};">${initials}</div>
-        <span class="text-white text-xs tracking-wide truncate max-w-[140px]">${name}</span>
-      </div>
-      <div id=${"stsList" + id} class="flex items-center gap-2 ml-auto">
-        ${frequency && frequency>0? `<div id='${id}' class="text-xs text-black bg-white rounded-full w-6 h-6 flex items-center justify-center font-medium transition-all">${frequency}</div>`: ''}
-        <button class="remove-btn text-white/25 hover:text-white text-base leading-none group-hover:text-white/50" title="Remove">✕</button>
-      </div>
-    `;
+        li.innerHTML = `
+    <div class="flex items-center gap-3">
+      <div class="color-dot w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 text-black"
+           style="background:${color};">${initials}</div>
+      <span class="text-white text-xs tracking-wide truncate max-w-[140px]">${name}</span>
+    </div>
+    <div id=${"stsList" + id} class="flex items-center gap-2 ml-auto">
+      ${frequency && frequency > 0 ? `<div id='${id}' class="text-xs text-black bg-white rounded-full w-6 h-6 flex items-center justify-center font-medium transition-all">${frequency}</div>` : ""}
+      <button class="remove-btn text-white/25 hover:text-white text-base leading-none group-hover:text-white/50" title="Remove">✕</button>
+    </div>
+  `;
 
-    li.querySelector('.remove-btn').onclick = () => {
-      li.classList.add('removing');
-      setTimeout(() => { 
-        li.remove(); 
-        updateCount(); 
-        savePeople(); 
+        // Toggle not-available class when clicking the li (except remove button)
+        li.addEventListener("click", (e) => {
+          if (!e.target.classList.contains("remove-btn")) {
+            li.classList.toggle("not-available");
+
+            if (li.classList.contains("not-available")) {
+              console.log("kdkdkdkd");
+              document.dispatchEvent(
+                new CustomEvent("personNotAvailable", {
+                  detail: { id: li.dataset.id },
+                }),
+              );
+            } else {
+              document.dispatchEvent(
+                new CustomEvent("personAvailable", {
+                  detail: { id: li.dataset.id },
+                }),
+              );
+            }
+          }
+        });
+
+        //  Remove person
+        li.querySelector(".remove-btn").onclick = () => {
+          li.classList.add("removing");
+          setTimeout(() => {
+            li.remove();
+            updateCount();
+            savePeople();
+            // 🔔 trigger event
+            document.dispatchEvent(
+              new CustomEvent("personRemoved", {
+                detail: { id: li.dataset.id },
+              }),
+            );
+          }, 200);
+        };
+
+        document.getElementById("peopleList").appendChild(li);
+      }
+
+      // ── UI state ─────────────────────────────────────────────────────
+      function updateCount() {
+        const n = document.querySelectorAll(".person-item").length;
+        document.getElementById("countBadge").textContent = n;
+        document.getElementById("emptyState").style.display =
+          n === 0 ? "flex" : "none";
+      }
+
+      // ── Add person ───────────────────────────────────────────────────
+      function addPerson() {
+        const name = document.getElementById("nameInput").value.trim();
+        if (!name) {
+          const inp = document.getElementById("nameInput");
+          inp.focus();
+          inp.style.borderColor = "#fff";
+          setTimeout(() => (inp.style.borderColor = ""), 600);
+          return;
+        }
+
+        const color = colorInput.value;
+        const id =
+          Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+        const person = { id, name, color, frequency: 0 };
+
+        renderPerson(person, true);
+
+        document.getElementById("nameInput").value = "";
+        colorIdx++;
+        colorInput.value = COLORS[colorIdx % COLORS.length];
+
+        updateCount();
+        savePeople();
+
         // 🔔 trigger event
         document.dispatchEvent(
-            new CustomEvent("personRemoved", { detail: {"id": li.dataset.id }})
+          new CustomEvent("personAdded", { detail: person }),
         );
-    }, 200);
-    };
 
-    document.getElementById("peopleList").appendChild(li);
-  }
+        document.getElementById("nameInput").focus();
+      }
 
-  // ── UI state ─────────────────────────────────────────────────────
-  function updateCount() {
-    const n = document.querySelectorAll('.person-item').length;
-    document.getElementById('countBadge').textContent = n;
-    document.getElementById('emptyState').style.display = n === 0 ? 'flex' : 'none';
-  }
+      // ── Init ─────────────────────────────────────────────────────────
+      colorInput.value = COLORS[colorIdx % COLORS.length];
 
-  // ── Add person ───────────────────────────────────────────────────
-  function addPerson() {
-    const name = document.getElementById("nameInput").value.trim();
-    if (!name) {
-        const inp = document.getElementById("nameInput");
-        inp.focus();
-        inp.style.borderColor = '#fff';
-        setTimeout(() => inp.style.borderColor = '', 600);
-        return;
-    }
+      loadPeople().forEach((p) => renderPerson(p, false));
+      updateCount();
 
-    const color = colorInput.value;
-    const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-
-    const person = { id, name, color, frequency: 0 };
-
-    renderPerson(person, true);
-
-    document.getElementById("nameInput").value = "";
-    colorIdx++;
-    colorInput.value = COLORS[colorIdx % COLORS.length];
-
-    updateCount();
-    savePeople();
-
-    // 🔔 trigger event
-    document.dispatchEvent(
-        new CustomEvent("personAdded", { detail: person })
-    );
-
-    document.getElementById("nameInput").focus();
-  }
-
-  // ── Init ─────────────────────────────────────────────────────────
-  colorInput.value = COLORS[colorIdx % COLORS.length];
-
-  loadPeople().forEach(p => renderPerson(p, false));
-  updateCount();
-
-  document.getElementById("nameInput").addEventListener("keydown", e => {
-    if (e.key === "Enter") addPerson();
-  });
-</script>
-</body>
+      document.getElementById("nameInput").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") addPerson();
+      });
+    </script>
+  </body>
 </html>

@@ -1,68 +1,78 @@
-import * as THREE from 'three'
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
-import particlesVertexShader from './shaders/particles/vertex.glsl'
-import particlesFragmentShader from './shaders/particles/fragment.glsl'
-import { EffectComposer, RenderPass, UnrealBloomPass } from 'three/examples/jsm/Addons.js'
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import particlesVertexShader from "./shaders/particles/vertex.glsl";
+import particlesFragmentShader from "./shaders/particles/fragment.glsl";
+import {
+  EffectComposer,
+  RenderPass,
+  UnrealBloomPass,
+} from "three/examples/jsm/Addons.js";
 
 /**
  * Base
  */
 // Canvas
-const canvas = document.querySelector('canvas.webgl')
-const canvasWheel = document.createElement('canvas')
-canvasWheel.width = 1024
-canvasWheel.height = 1024
-canvasWheel.style.position = 'fixed'
-canvasWheel.style.width = '0px'
-canvasWheel.style.height = '0px'
-canvasWheel.style.top = 0
-canvasWheel.style.left = -1
-canvasWheel.style.zIndex = -1
-document.body.append(canvasWheel)
+const canvas = document.querySelector("canvas.webgl");
+const canvasWheel = document.createElement("canvas");
+canvasWheel.width = 1024;
+canvasWheel.height = 1024;
+canvasWheel.style.position = "fixed";
+canvasWheel.style.width = "0px";
+canvasWheel.style.height = "0px";
+canvasWheel.style.top = 0;
+canvasWheel.style.left = -1;
+canvasWheel.style.zIndex = -1;
+document.body.append(canvasWheel);
 
 // Scene
-const scene = new THREE.Scene()
+const scene = new THREE.Scene();
 
 /**
  * Sizes
  */
 const sizes = {
-    width: window.innerWidth,
-    height: window.innerHeight,
-    pixelRatio: Math.min(window.devicePixelRatio, 2)
-}
+  width: window.innerWidth,
+  height: window.innerHeight,
+  pixelRatio: Math.min(window.devicePixelRatio, 2),
+};
 
-window.addEventListener('resize', () =>
-{
-    // Update sizes
-    sizes.width = window.innerWidth
-    sizes.height = window.innerHeight
-    sizes.pixelRatio = Math.min(window.devicePixelRatio, 2)
+window.addEventListener("resize", () => {
+  // Update sizes
+  sizes.width = window.innerWidth;
+  sizes.height = window.innerHeight;
+  sizes.pixelRatio = Math.min(window.devicePixelRatio, 2);
 
-    // Materials
-    particlesMaterial.uniforms.uResolution.value.set(sizes.width * sizes.pixelRatio, sizes.height * sizes.pixelRatio)
+  // Materials
+  particlesMaterial.uniforms.uResolution.value.set(
+    sizes.width * sizes.pixelRatio,
+    sizes.height * sizes.pixelRatio,
+  );
 
-    // Update camera
-    camera.aspect = sizes.width / sizes.height
-    camera.updateProjectionMatrix()
+  // Update camera
+  camera.aspect = sizes.width / sizes.height;
+  camera.updateProjectionMatrix();
 
-    // Update renderer
-    renderer.setSize(sizes.width, sizes.height)
-    renderer.setPixelRatio(sizes.pixelRatio)
+  // Update renderer
+  renderer.setSize(sizes.width, sizes.height);
+  renderer.setPixelRatio(sizes.pixelRatio);
 
-    composer.setSize(sizes.width, sizes.height)
-})
+  composer.setSize(sizes.width, sizes.height);
+});
 
 /**
  * Elements
  */
 function loadPeople() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-    catch { return []; }
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+  } catch {
+    return [];
+  }
 }
 
 const people = loadPeople();
 
+// --------------------- Events ------------------------
 document.addEventListener("personAdded", (event) => {
   const person = event.detail;
 
@@ -72,9 +82,20 @@ document.addEventListener("personAdded", (event) => {
 });
 
 document.addEventListener("personRemoved", (event) => {
-  const index = people.findIndex(p => p.id === event.detail.id);
+  const index = people.findIndex((p) => p.id === event.detail.id);
   if (index !== -1) people.splice(index, 1);
 });
+
+document.addEventListener("personNotAvailable", (event) => {
+  const index = people.findIndex((p) => p.id === event.detail.id);
+  if (index !== -1) people[index].unavailable = true; // fixed typo
+});
+
+document.addEventListener("personAvailable", (event) => {
+  const index = people.findIndex((p) => p.id === event.detail.id);
+  if (index !== -1) people[index].unavailable = false;
+});
+// -----------------------------------------------------
 
 function createSpinningWheel(canvas, people) {
   const ctx = canvas.getContext("2d");
@@ -88,14 +109,20 @@ function createSpinningWheel(canvas, people) {
   let spinVelocity = 0;
   let selectedPerson = null;
 
+  function getActivePeople() {
+    return people.filter((p) => !p.unavailable);
+  }
+
   // --- WEIGHTED ARCS ---
   // Returns arc sizes (in radians) per person, proportional to inverse frequency.
   // Someone with frequency 0 gets weight 1 (baseline).
   // Someone with frequency N gets weight 1 / (N + 1).
-  function computeArcs(people) {
-    const weights = people.map(p => 1 / ((Number(p.frequency) || 0) + 1));
+  function computeArcs(activePeople) {
+    const weights = activePeople.map(
+      (p) => 1 / ((Number(p.frequency) || 0) + 1),
+    );
     const totalWeight = weights.reduce((sum, w) => sum + w, 0);
-    return weights.map(w => (w / totalWeight) * Math.PI * 2);
+    return weights.map((w) => (w / totalWeight) * Math.PI * 2);
   }
 
   // Precompute start angles for each slice given an array of arc sizes + base angle
@@ -110,10 +137,11 @@ function createSpinningWheel(canvas, people) {
   }
 
   function drawWheel() {
-    const arcs = computeArcs(people);
+    const activePeople = getActivePeople();
+    const arcs = computeArcs(activePeople);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    people.forEach((person, i) => {
+    activePeople.forEach((person, i) => {
       const startAngle = computeStartAngles(arcs, angle)[i];
       const endAngle = startAngle + arcs[i];
 
@@ -138,12 +166,15 @@ function createSpinningWheel(canvas, people) {
     });
 
     // Separators
-    const arcs2 = computeArcs(people);
+    const arcs2 = computeArcs(activePeople);
     let acc = angle;
-    for (let i = 0; i < people.length; i++) {
+    for (let i = 0; i < activePeople.length; i++) {
       ctx.beginPath();
       ctx.moveTo(centerX, centerY);
-      ctx.lineTo(centerX + radius * Math.cos(acc), centerY + radius * Math.sin(acc));
+      ctx.lineTo(
+        centerX + radius * Math.cos(acc),
+        centerY + radius * Math.sin(acc),
+      );
       ctx.strokeStyle = "#222";
       ctx.lineWidth = Math.max(2, radius / 100);
       ctx.stroke();
@@ -181,11 +212,13 @@ function createSpinningWheel(canvas, people) {
   }
 
   function determineWinner() {
-    const arcs = computeArcs(people);
+    const activePeople = getActivePeople();
+    const arcs = computeArcs(activePeople);
 
     // The pointer sits at angle=0 on the right (3 o'clock).
     // We need to find which slice contains angle 0 (i.e. the right side).
-    const normalizedAngle = ((0 - angle) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+    const normalizedAngle =
+      (((0 - angle) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
 
     let acc = 0;
     let index = 0;
@@ -197,7 +230,7 @@ function createSpinningWheel(canvas, people) {
       }
     }
 
-    selectedPerson = people[index];
+    selectedPerson = activePeople[index];
     if (wheel.onFinish) wheel.onFinish(selectedPerson);
   }
 
@@ -208,64 +241,62 @@ function createSpinningWheel(canvas, people) {
         spinning = true;
       }
     },
-    getWinner() { return selectedPerson; },
-    onFinish: null
+    getWinner() {
+      return selectedPerson;
+    },
+    onFinish: null,
   };
 
   update();
   return wheel;
 }
 
-
 const wheel = createSpinningWheel(canvasWheel, people);
-window.setTimeout(
-    () => console.log(wheel.getWinner()), 2000
-)
+window.setTimeout(() => console.log(wheel.getWinner()), 2000);
 
-const spinWheelTexture = new THREE.CanvasTexture(canvasWheel)
+const spinWheelTexture = new THREE.CanvasTexture(canvasWheel);
 document.getElementById("spinBtn").onclick = () => {
   wheel.spin();
 };
 
-window.addEventListener('dblclick', wheel.spin)
-
+window.addEventListener("dblclick", wheel.spin);
 
 function savePeople() {
-const items = [...document.querySelectorAll('.person-item')].map(li => ({
-    id:    li.dataset.id,
-    name:  li.dataset.name,
+  const items = [...document.querySelectorAll(".person-item")].map((li) => ({
+    id: li.dataset.id,
+    name: li.dataset.name,
     color: li.dataset.color,
-    frequency: li.dataset.frequency
-}));
-localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    frequency: li.dataset.frequency,
+  }));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
 }
 
 const updateVisual = (winner) => {
-    const frequencyWinnerElement = document.getElementById(winner.id)
+  const frequencyWinnerElement = document.getElementById(winner.id);
 
-    if (!frequencyWinnerElement) {
-        const stsList = document.getElementById("stsList" + winner.id)
+  if (!frequencyWinnerElement) {
+    const stsList = document.getElementById("stsList" + winner.id);
 
-        stsList.innerHTML = `<div id='${winner.id}' class="text-xs text-black bg-white rounded-full w-6 h-6 flex items-center justify-center font-medium transition-all">${winner.frequency}</div>` + stsList.innerHTML
+    stsList.innerHTML =
+      `<div id='${winner.id}' class="text-xs text-black bg-white rounded-full w-6 h-6 flex items-center justify-center font-medium transition-all">${winner.frequency}</div>` +
+      stsList.innerHTML;
 
-        console.log(stsList)
-        return
-    }
+    console.log(stsList);
+    return;
+  }
 
-    frequencyWinnerElement.textContent = winner.frequency
+  frequencyWinnerElement.textContent = winner.frequency;
+};
 
-}
-
-function showWinner(person){
-
-  const winnerItem = document.getElementById("winnerItem")
+function showWinner(person) {
+  const winnerItem = document.getElementById("winnerItem");
 
   const initials = person.name
     .split(" ")
-    .map(w=>w[0])
+    .map((w) => w[0])
     .join("")
-    .slice(0,2)
-    .toUpperCase()
+    .slice(0, 2)
+    .toUpperCase();
 
   winnerItem.innerHTML = `
     <div class="flex items-center gap-3">
@@ -275,212 +306,241 @@ function showWinner(person){
       </div>
       <span class="text-white text-xs tracking-wide">${person.name}</span>
     </div>
-  `
+  `;
 
-  document.getElementById("winnerModal").classList.remove("hidden")
+  document.getElementById("winnerModal").classList.remove("hidden");
 }
 
 const updateDatasetWinnerFrequency = (winner) => {
-    const li = document.querySelector(`[data-id="${winner.id}"]`);
-    li.dataset.frequency = winner.frequency
-}
-
-wheel.onFinish = (winner) => {
-    if (winner.frequency) winner.frequency++;
-    else winner.frequency = 1;
-    console.log("Winner:", winner);
-
-    updateVisual(winner)
-    updateDatasetWinnerFrequency(winner)
-    showWinner(winner);
-    savePeople()
+  const li = document.querySelector(`[data-id="${winner.id}"]`);
+  li.dataset.frequency = winner.frequency;
 };
 
+wheel.onFinish = (winner) => {
+  if (winner.frequency) winner.frequency++;
+  else winner.frequency = 1;
+  console.log("Winner:", winner);
+
+  updateVisual(winner);
+  updateDatasetWinnerFrequency(winner);
+  showWinner(winner);
+  savePeople();
+};
 
 /**
  * Camera
  */
 // Base camera
-const camera = new THREE.PerspectiveCamera(35, sizes.width / sizes.height, 0.1, 100)
-camera.position.set(0, -0.5, 25)
-scene.add(camera)
+const camera = new THREE.PerspectiveCamera(
+  35,
+  sizes.width / sizes.height,
+  0.1,
+  100,
+);
+camera.position.set(0, -0.5, 25);
+scene.add(camera);
 
 // Controls
-const controls = new OrbitControls(camera, canvas)
-controls.enableDamping = true
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
 
 /**
  * Renderer
  */
 const renderer = new THREE.WebGLRenderer({
-    canvas: canvas,
-    antialias: true
-})
-renderer.setClearColor('#181818')
-renderer.setSize(sizes.width, sizes.height)
-renderer.setPixelRatio(sizes.pixelRatio)
+  canvas: canvas,
+  antialias: true,
+});
+renderer.setClearColor("#181818");
+renderer.setSize(sizes.width, sizes.height);
+renderer.setPixelRatio(sizes.pixelRatio);
 
 /**
  * Displacement
  */
 
-const displacement = {}
+const displacement = {};
 
 // 2d canvas
-displacement.canvas = document.createElement('canvas')
-displacement.canvas.width = 128
-displacement.canvas.height = 128
-displacement.canvas.style.position = 'fixed'
-displacement.canvas.style.width = '0px'
-displacement.canvas.style.height = '0px'
-displacement.canvas.style.top = 0
-displacement.canvas.style.left = 0
-displacement.canvas.style.zIndex = 0
-document.body.append(displacement.canvas)
+displacement.canvas = document.createElement("canvas");
+displacement.canvas.width = 128;
+displacement.canvas.height = 128;
+displacement.canvas.style.position = "fixed";
+displacement.canvas.style.width = "0px";
+displacement.canvas.style.height = "0px";
+displacement.canvas.style.top = 0;
+displacement.canvas.style.left = 0;
+displacement.canvas.style.zIndex = 0;
+document.body.append(displacement.canvas);
 
 // Context
-displacement.context = displacement.canvas.getContext('2d')
+displacement.context = displacement.canvas.getContext("2d");
 // displacement.context.fillStyle = 'red'
-displacement.context.fillRect(0, 0, displacement.canvas.width, displacement.canvas.height)
+displacement.context.fillRect(
+  0,
+  0,
+  displacement.canvas.width,
+  displacement.canvas.height,
+);
 
 // Glow Image
-displacement.glowImage = new Image()
-displacement.glowImage.src = './glow.png'
+displacement.glowImage = new Image();
+displacement.glowImage.src = "./glow.png";
 
 // Interactive Plane
 displacement.interactivePlane = new THREE.Mesh(
-    new THREE.PlaneGeometry(10, 10),
-    new THREE.MeshBasicMaterial({color: 'red', side: THREE.DoubleSide})
-)
-scene.add(displacement.interactivePlane)
-displacement.interactivePlane.visible = false
+  new THREE.PlaneGeometry(10, 10),
+  new THREE.MeshBasicMaterial({ color: "red", side: THREE.DoubleSide }),
+);
+scene.add(displacement.interactivePlane);
+displacement.interactivePlane.visible = false;
 
 // Raycaster
-displacement.raycaster = new THREE.Raycaster()
+displacement.raycaster = new THREE.Raycaster();
 
 // coordinates
-displacement.screenCursor = new THREE.Vector2(9999,9999)
-displacement.canvasCursor = new THREE.Vector2(9999,9999)
-displacement.canvasCursorPrevious = new THREE.Vector2(9999,9999)
+displacement.screenCursor = new THREE.Vector2(9999, 9999);
+displacement.canvasCursor = new THREE.Vector2(9999, 9999);
+displacement.canvasCursorPrevious = new THREE.Vector2(9999, 9999);
 
-window.addEventListener('pointermove', (event) => {
+window.addEventListener("pointermove", (event) => {
+  displacement.screenCursor.x = (event.clientX / sizes.width) * 2 - 1;
+  displacement.screenCursor.y = -(event.clientY / sizes.height) * 2 + 1;
+});
 
-    displacement.screenCursor.x = (event.clientX / sizes.width) * 2 - 1
-    displacement.screenCursor.y = - (event.clientY / sizes.height) * 2 + 1 
-
-})
-
-displacement.texture = new THREE.CanvasTexture(displacement.canvas)
+displacement.texture = new THREE.CanvasTexture(displacement.canvas);
 
 /**
  * Particles
  */
-const particlesGeometry = new THREE.PlaneGeometry(10, 10, 512, 512)
-particlesGeometry.setIndex(null)
-particlesGeometry.deleteAttribute('normal')
+const particlesGeometry = new THREE.PlaneGeometry(10, 10, 512, 512);
+particlesGeometry.setIndex(null);
+particlesGeometry.deleteAttribute("normal");
 
-const intensitiesArray = new Float32Array(particlesGeometry.attributes.position.count)
-const anglesArray = new Float32Array(particlesGeometry.attributes.position.count)
+const intensitiesArray = new Float32Array(
+  particlesGeometry.attributes.position.count,
+);
+const anglesArray = new Float32Array(
+  particlesGeometry.attributes.position.count,
+);
 
 for (let i = 0; i < particlesGeometry.attributes.position.count; i++) {
-    intensitiesArray[i] = Math.random()
-    anglesArray[i] = Math.random() * Math.PI * 2.0
+  intensitiesArray[i] = Math.random();
+  anglesArray[i] = Math.random() * Math.PI * 2.0;
 }
 
-particlesGeometry.setAttribute('aIntensity', new THREE.BufferAttribute(intensitiesArray, 1))
-particlesGeometry.setAttribute('aAngle', new THREE.BufferAttribute(anglesArray, 1))
+particlesGeometry.setAttribute(
+  "aIntensity",
+  new THREE.BufferAttribute(intensitiesArray, 1),
+);
+particlesGeometry.setAttribute(
+  "aAngle",
+  new THREE.BufferAttribute(anglesArray, 1),
+);
 
 const particlesMaterial = new THREE.ShaderMaterial({
-    vertexShader: particlesVertexShader,
-    fragmentShader: particlesFragmentShader,
-    uniforms:
-    {
-        uResolution: new THREE.Uniform(new THREE.Vector2(sizes.width * sizes.pixelRatio, sizes.height * sizes.pixelRatio)),
-        uPictureTexture: new THREE.Uniform(spinWheelTexture),
-        uDisplacementTexture: new THREE.Uniform(displacement.texture),
-        uTime: new THREE.Uniform(0), 
-    },
-    // blending: THREE.AdditiveBlending,   
-    depthWrite: false,               
-    transparent: true   
-})
-const particles = new THREE.Points(particlesGeometry, particlesMaterial)
-scene.add(particles)
+  vertexShader: particlesVertexShader,
+  fragmentShader: particlesFragmentShader,
+  uniforms: {
+    uResolution: new THREE.Uniform(
+      new THREE.Vector2(
+        sizes.width * sizes.pixelRatio,
+        sizes.height * sizes.pixelRatio,
+      ),
+    ),
+    uPictureTexture: new THREE.Uniform(spinWheelTexture),
+    uDisplacementTexture: new THREE.Uniform(displacement.texture),
+    uTime: new THREE.Uniform(0),
+  },
+  // blending: THREE.AdditiveBlending,
+  depthWrite: false,
+  transparent: true,
+});
+const particles = new THREE.Points(particlesGeometry, particlesMaterial);
+scene.add(particles);
 
-
-const composer = new EffectComposer(renderer)
-composer.addPass(new RenderPass(scene, camera))
-composer.addPass(new UnrealBloomPass(
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+composer.addPass(
+  new UnrealBloomPass(
     new THREE.Vector2(sizes.width, sizes.height),
-    0.8,   // strength
-    0.4,   // radius
-    0.2    // threshold — only pixels above this luminance bloom
-))
+    0.8, // strength
+    0.4, // radius
+    0.2, // threshold — only pixels above this luminance bloom
+  ),
+);
 
-
-const clock = new THREE.Clock()
+const clock = new THREE.Clock();
 
 /**
  * Animate
  */
-const tick = () =>
-{
-    // Update controls
-    controls.update()
+const tick = () => {
+  // Update controls
+  controls.update();
 
-    composer.render()
+  composer.render();
 
-    /**
-     * Raycaster
-     */
+  /**
+   * Raycaster
+   */
 
-    displacement.raycaster.setFromCamera(displacement.screenCursor, camera)
-    const intersections = displacement.raycaster.intersectObject(displacement.interactivePlane)
+  displacement.raycaster.setFromCamera(displacement.screenCursor, camera);
+  const intersections = displacement.raycaster.intersectObject(
+    displacement.interactivePlane,
+  );
 
-    const elapsedTime = clock.getElapsedTime()
-    particlesMaterial.uniforms.uTime.value = elapsedTime
+  const elapsedTime = clock.getElapsedTime();
+  particlesMaterial.uniforms.uTime.value = elapsedTime;
 
-    if (intersections.length) {
-        const uv = intersections[0].uv
+  if (intersections.length) {
+    const uv = intersections[0].uv;
 
-        displacement.canvasCursor.x = uv.x * displacement.canvas.width
-        displacement.canvasCursor.y = (1 - uv.y) * displacement.canvas.height 
-    }
+    displacement.canvasCursor.x = uv.x * displacement.canvas.width;
+    displacement.canvasCursor.y = (1 - uv.y) * displacement.canvas.height;
+  }
 
-    /**
-     * Displacement
-     */
-    // Fade out
-    displacement.context.globalCompositeOperation = 'source-over'
-    displacement.context.globalAlpha = 0.02
-    displacement.context.fillRect(0, 0, displacement.canvas.width, displacement.canvas.height)
+  /**
+   * Displacement
+   */
+  // Fade out
+  displacement.context.globalCompositeOperation = "source-over";
+  displacement.context.globalAlpha = 0.02;
+  displacement.context.fillRect(
+    0,
+    0,
+    displacement.canvas.width,
+    displacement.canvas.height,
+  );
 
-    // Speed Alpha
-    const cursorDistance = displacement.canvasCursorPrevious.distanceTo(displacement.canvasCursor)
-    displacement.canvasCursorPrevious.copy(displacement.canvasCursor)
-    const alpha = Math.min(cursorDistance * 0.1, 1)
+  // Speed Alpha
+  const cursorDistance = displacement.canvasCursorPrevious.distanceTo(
+    displacement.canvasCursor,
+  );
+  displacement.canvasCursorPrevious.copy(displacement.canvasCursor);
+  const alpha = Math.min(cursorDistance * 0.1, 1);
 
-    // draw glow
-    const glowSize = displacement.canvas.width * 0.05
-    displacement.context.globalCompositeOperation = 'lighten'
-    displacement.context.globalAlpha = alpha
-    displacement.context.drawImage(
-        displacement.glowImage,
-        displacement.canvasCursor.x - glowSize * 0.5,
-        displacement.canvasCursor.y - glowSize * 0.5,
-        glowSize,
-        glowSize
-    )
+  // draw glow
+  const glowSize = displacement.canvas.width * 0.05;
+  displacement.context.globalCompositeOperation = "lighten";
+  displacement.context.globalAlpha = alpha;
+  displacement.context.drawImage(
+    displacement.glowImage,
+    displacement.canvasCursor.x - glowSize * 0.5,
+    displacement.canvasCursor.y - glowSize * 0.5,
+    glowSize,
+    glowSize,
+  );
 
-    // Texture
-    displacement.texture.needsUpdate = true
-    spinWheelTexture.needsUpdate = true
+  // Texture
+  displacement.texture.needsUpdate = true;
+  spinWheelTexture.needsUpdate = true;
 
-    // Render
-    renderer.render(scene, camera)
+  // Render
+  renderer.render(scene, camera);
 
-    // Call tick again on the next frame
-    window.requestAnimationFrame(tick)
-}
+  // Call tick again on the next frame
+  window.requestAnimationFrame(tick);
+};
 
-tick()
+tick();
