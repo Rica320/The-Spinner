@@ -99,7 +99,17 @@ async function loadPeople() {
   }
 }
 
-const people = await loadPeople();
+const people = [];
+
+// Initialize people asynchronously
+(async () => {
+  const loadedPeople = await loadPeople();
+  loadedPeople.forEach(person => {
+    document.dispatchEvent(
+      new CustomEvent("personAdded", { detail: person })
+    );
+  });
+})();
 
 // --------------------- Events ------------------------
 document.addEventListener("personAdded", (event) => {
