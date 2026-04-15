@@ -81,17 +81,35 @@
         </button>
       </div>
 
-      <!-- SPIN -->
-      <button
-        id="spinBtn"
-        onclick="toggleSpin()"
-        class="spin-btn w-full bg-transparent text-white border border-white/30 rounded-lg py-2 text-xs font-medium"
-      >
-        <span class="btn-label">
-          <i class="spin-icon">↻</i>
-          <span id="spinLabel">SPIN</span>
-        </span>
-      </button>
+      <!-- SPIN & SHARE -->
+      <div class="flex w-full">
+        <button
+          id="spinBtn"
+          onclick="toggleSpin()"
+          class="flex-1 bg-transparent text-white border border-white/30 rounded-l-lg py-2 text-xs font-medium tracking-widest hover:bg-white/10 transition-colors"
+        >
+          <span class="flex items-center justify-center gap-2">
+            <i class="spin-icon">↻</i>
+            <span id="spinLabel">SPIN</span>
+          </span>
+        </button>
+        <div class="w-px bg-white/20"></div>
+        <button
+          id="shareBtn"
+          onclick="shareWheel()"
+          class="flex-1 bg-transparent text-white border border-white/30 rounded-r-lg py-2 text-xs font-medium tracking-widest hover:bg-white/10 transition-colors"
+        >
+          <span class="flex items-center justify-center gap-2">
+            <span id="shareLabel">SHARE</span>
+            <i class="share-icon">↱</i>
+          </span>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Share notification -->
+    <div id="shareNotification" class="hidden fixed top-4 right-4 bg-black border border-white rounded-lg px-4 py-2 text-white text-xs z-50">
+      Copied to clipboard!
     </div>
 
     <!-- MODAL -->
@@ -130,6 +148,10 @@
     </div>
     <script>
       const STORAGE_KEY = "people-panel-v1";
+      const JSONBIN_MASTER_KEY = '$2a$10$G6bR/qRFeR9JHv5kKWdVROgVH7tEmuhsANUz9c9e8yqU.qV5py2c.';
+      const JSONBIN_ACCESS_KEY = '$2a$10$7fu7GA354R1OmYmNfpBRaO99WlUDSkSo34oDJ.fAmvfNV0Yqe81K6';
+      const urlParams = new URLSearchParams(window.location.search);
+      const binId = urlParams.get('bin');
       const COLORS = [
         "#e63946",
         "#f4a261",
@@ -154,6 +176,111 @@
         }
       }
 
+      async function loadPeopleFromBin(binId) {
+        try {
+          const response = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
+            headers: {
+              'X-Master-Key': JSONBIN_MASTER_KEY,
+              'X-Access-Key': JSONBIN_ACCESS_KEY
+            }
+          });
+          if (!response.ok) {
+            // Bin doesn't exist, create it with empty data
+            await fetch(`https://api.jsonbin.io/v3/b`, {
+              method: 'POST',
+              headers: {
+                'X-Master-Key': JSONBIN_MASTER_KEY,
+                'X-Access-Key': JSONBIN_ACCESS_KEY,
+                'X-Bin-Name': binId,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ people: [] })
+            });
+            return [];
+          }
+          const data = await response.json();
+          return data.record?.people || [];
+        } catch (e) {
+          console.error('Failed to load from JSONBin:', e);
+          return [];
+        }
+      }
+
+      async function savePeopleToBin(binId, people) {
+        try {
+          const response = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+            method: 'PUT',
+            headers: {
+              'X-Master-Key': JSONBIN_MASTER_KEY,
+              'X-Access-Key': JSONBIN_ACCESS_KEY,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ people })
+          });
+          if (!response.ok) {
+            // If bin doesn't exist, create it
+            await fetch(`https://api.jsonbin.io/v3/b`, {
+              method: 'POST',
+              headers: {
+                'X-Master-Key': JSONBIN_MASTER_KEY,
+                'X-Access-Key': JSONBIN_ACCESS_KEY,
+                'X-Bin-Name': binId,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ people })
+            });
+          }
+        } catch (e) {
+          console.error('Failed to save to JSONBin:', e);
+        }
+      }
+
+      async function shareWheel() {
+        // Get current people data
+        const items = [...document.querySelectorAll(".person-item")].map(
+          (li) => ({
+            id: li.dataset.id,
+            name: li.dataset.name,
+            color: li.dataset.color,
+            frequency: li.dataset.frequency,
+          }),
+        );
+        
+        // Generate random bin name
+        const randomBinName = 'wheel-' + Math.random().toString(36).substring(2, 12);
+        
+        try {
+          // Create new bin
+          const response = await fetch(`https://api.jsonbin.io/v3/b`, {
+            method: 'POST',
+            headers: {
+              'X-Master-Key': JSONBIN_MASTER_KEY,
+              'X-Access-Key': JSONBIN_ACCESS_KEY,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ people: items })
+          });
+          
+          const data = await response.json();
+          const binId = data.metadata.id;
+          
+          // Construct share URL
+          const shareUrl = window.location.origin + window.location.pathname + '?bin=' + binId;
+          
+          // Copy to clipboard
+          await navigator.clipboard.writeText(shareUrl);
+          
+          // Show notification
+          const notification = document.getElementById('shareNotification');
+          notification.classList.remove('hidden');
+          setTimeout(() => notification.classList.add('hidden'), 2000);
+          
+        } catch (e) {
+          console.error('Failed to create shareable link:', e);
+          alert('Failed to create shareable link. Check console for details.');
+        }
+      }
+
       function closeWinnerModal() {
         document.getElementById("winnerModal").classList.add("hidden");
       }
@@ -168,6 +295,11 @@
           }),
         );
         localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+        
+        // Save to JSONBin if a bin ID is present (fire and forget)
+        if (binId) {
+          savePeopleToBin(binId, items).catch(e => console.error('Save failed:', e));
+        }
       }
 
       // ── Render a single person li ────────────────────────────────────
@@ -286,8 +418,18 @@
       // ── Init ─────────────────────────────────────────────────────────
       colorInput.value = COLORS[colorIdx % COLORS.length];
 
-      loadPeople().forEach((p) => renderPerson(p, false));
-      updateCount();
+      // Load initial data
+      async function init() {
+        let initialPeople = [];
+        if (binId) {
+          initialPeople = await loadPeopleFromBin(binId);
+        } else {
+          initialPeople = loadPeople();
+        }
+        initialPeople.forEach((p) => renderPerson(p, false));
+        updateCount();
+      }
+      init();
 
       document.getElementById("nameInput").addEventListener("keydown", (e) => {
         if (e.key === "Enter") addPerson();

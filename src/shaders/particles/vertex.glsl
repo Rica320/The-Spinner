@@ -1,6 +1,7 @@
 uniform vec2 uResolution;
 uniform sampler2D uPictureTexture;
 uniform sampler2D uDisplacementTexture;
+uniform float uPixelRatio;
 
 attribute float aIntensity;
 attribute float aAngle;
@@ -40,7 +41,7 @@ void main()
     // Varyings
     vColor = vec3(pow(pictureIntensityR, 2.0),pow(pictureIntensityG, 2.0),pow(pictureIntensityB, 2.0));
 
-    // Point size
-    gl_PointSize = 45.0 ; //* (pictureIntensityR + pictureIntensityG + pictureIntensityB) * uResolution.y;
+    // Point size - account for pixel ratio and perspective
+    gl_PointSize = 45.0 * uPixelRatio;
     gl_PointSize *= (1.0 / - viewPosition.z);
 }

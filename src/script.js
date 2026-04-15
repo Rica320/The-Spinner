@@ -53,6 +53,7 @@ window.addEventListener("resize", () => {
     sizes.width * sizes.pixelRatio,
     sizes.height * sizes.pixelRatio,
   );
+  particlesMaterial.uniforms.uPixelRatio.value = sizes.pixelRatio;
 
   // Update camera
   camera.aspect = sizes.width / sizes.height;
@@ -68,7 +69,29 @@ window.addEventListener("resize", () => {
 /**
  * Elements
  */
-function loadPeople() {
+const urlParams = new URLSearchParams(window.location.search);
+const binId = urlParams.get('bin');
+const STORAGE_KEY = "people-panel-v1";
+const JSONBIN_MASTER_KEY = '$2a$10$G6bR/qRFeR9JHv5kKWdVROgVH7tEmuhsANUz9c9e8yqU.qV5py2c.';
+const JSONBIN_ACCESS_KEY = '$2a$10$7fu7GA354R1OmYmNfpBRaO99WlUDSkSo34oDJ.fAmvfNV0Yqe81K6';
+
+async function loadPeople() {
+  if (binId) {
+    try {
+      const response = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
+        headers: {
+          'X-Master-Key': JSONBIN_MASTER_KEY,
+          'X-Access-Key': JSONBIN_ACCESS_KEY
+        }
+      });
+      const data = await response.json();
+      if (data.record && data.record.people) {
+        return data.record.people;
+      }
+    } catch (e) {
+      console.error('Failed to load from JSONBin:', e);
+    }
+  }
   try {
     return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
   } catch {
@@ -76,7 +99,7 @@ function loadPeople() {
   }
 }
 
-const people = loadPeople();
+const people = await loadPeople();
 
 // --------------------- Events ------------------------
 document.addEventListener("personAdded", (event) => {
@@ -267,6 +290,34 @@ document.getElementById("spinBtn").onclick = () => {
 
 window.addEventListener("dblclick", wheel.spin);
 
+async function saveToJsonBin(binId, items) {
+  try {
+    const response = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+      method: 'PUT',
+      headers: {
+        'X-Master-Key': JSONBIN_MASTER_KEY,
+        'X-Access-Key': JSONBIN_ACCESS_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ people: items })
+    });
+    if (!response.ok) {
+      // Try creating the bin if it doesn't exist
+      await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+        method: 'POST',
+        headers: {
+          'X-Master-Key': JSONBIN_MASTER_KEY,
+          'X-Access-Key': JSONBIN_ACCESS_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ people: items })
+      });
+    }
+  } catch (e) {
+    console.error('Failed to save to JSONBin:', e);
+  }
+}
+
 function savePeople() {
   const items = [...document.querySelectorAll(".person-item")].map((li) => ({
     id: li.dataset.id,
@@ -275,6 +326,11 @@ function savePeople() {
     frequency: li.dataset.frequency,
   }));
   localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  
+  // Save to JSONBin if a bin ID is present (fire and forget)
+  if (binId) {
+    saveToJsonBin(binId, items).catch(e => console.error('Save failed:', e));
+  }
 }
 
 const updateVisual = (winner) => {
@@ -458,6 +514,7 @@ const particlesMaterial = new THREE.ShaderMaterial({
         sizes.height * sizes.pixelRatio,
       ),
     ),
+    uPixelRatio: new THREE.Uniform(sizes.pixelRatio),
     uPictureTexture: new THREE.Uniform(spinWheelTexture),
     uDisplacementTexture: new THREE.Uniform(displacement.texture),
     uTime: new THREE.Uniform(0),
