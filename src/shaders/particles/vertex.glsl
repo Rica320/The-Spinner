@@ -42,6 +42,6 @@ void main()
     vColor = vec3(pow(pictureIntensityR, 2.0),pow(pictureIntensityG, 2.0),pow(pictureIntensityB, 2.0));
 
     // Point size - account for pixel ratio and perspective
-    gl_PointSize = 45.0 * uPixelRatio;
+    gl_PointSize = 44.0 * uPixelRatio; //* (pictureIntensityR + pictureIntensityG + pictureIntensityB) * uResolution.y;
     gl_PointSize *= (1.0 / - viewPosition.z);
 }

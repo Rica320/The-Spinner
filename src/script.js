@@ -127,7 +127,7 @@ document.addEventListener("personRemoved", (event) => {
 
 document.addEventListener("personNotAvailable", (event) => {
   const index = people.findIndex((p) => p.id === event.detail.id);
-  if (index !== -1) people[index].unavailable = true; // fixed typo
+  if (index !== -1) people[index].unavailable = true;
 });
 
 document.addEventListener("personAvailable", (event) => {
