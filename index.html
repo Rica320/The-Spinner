@@ -8,8 +8,8 @@
       href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bebas+Neue&display=swap"
       rel="stylesheet"
     />
-    <script type="module" crossorigin src="./assets/index-CKrFpdIS.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-CC1T_zxO.css">
+    <script type="module" crossorigin src="./assets/index-CO-JSJXe.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CzXBmmm2.css">
   </head>
   <canvas class="webgl"></canvas>
   <body class="min-h-screen flex items-center justify-center">
@@ -107,8 +107,16 @@
       </div>
     </div>
     
+    <!-- Last Winner Widget -->
+    <div id="lastWinnerWidget" class="fixed top-4 right-4 bg-black border border-white rounded-lg px-4 py-2 text-white text-xs z-50 shadow-[0_0_60px_rgba(255,255,255,0.08)]" style="display: none;">
+      <div class="flex items-center gap-2">
+        <span class="text-white/50 text-xs tracking-wide">LAST WINNER</span>
+        <div id="lastWinnerContent" class="flex items-center gap-2 ml-2"></div>
+      </div>
+    </div>
+
     <!-- Share notification -->
-    <div id="shareNotification" class="hidden fixed top-4 right-4 bg-black border border-white rounded-lg px-4 py-2 text-white text-xs z-50">
+    <div id="shareNotification" class="hidden fixed top-14 right-4 bg-black border border-white rounded-lg px-4 py-2 text-white text-xs z-50">
       Copied to clipboard!
     </div>
 
@@ -152,6 +160,7 @@
       const JSONBIN_ACCESS_KEY = '$2a$10$7fu7GA354R1OmYmNfpBRaO99WlUDSkSo34oDJ.fAmvfNV0Yqe81K6';
       const urlParams = new URLSearchParams(window.location.search);
       const binId = urlParams.get('bin');
+      let lastWinner = null;
       const COLORS = [
         "#e63946",
         "#f4a261",
@@ -170,9 +179,26 @@
       // ── Storage helpers ──────────────────────────────────────────────
       function loadPeople() {
         try {
-          return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+          const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+          if (data.people) {
+            return data.people;
+          }
+          // Handle old format (array)
+          if (Array.isArray(data)) {
+            return data;
+          }
+          return [];
         } catch {
           return [];
+        }
+      }
+
+      function loadLastWinnerFromStore() {
+        try {
+          const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+          return data.lastWinner || null;
+        } catch {
+          return null;
         }
       }
 
@@ -194,11 +220,15 @@
                 'X-Bin-Name': binId,
                 'Content-Type': 'application/json'
               },
-              body: JSON.stringify({ people: [] })
+              body: JSON.stringify({ people: [], lastWinner: null })
             });
             return [];
           }
           const data = await response.json();
+
+          // update last winner
+          lastWinner = data.lastWinner;
+
           return data.record?.people || [];
         } catch (e) {
           console.error('Failed to load from JSONBin:', e);
@@ -206,7 +236,8 @@
         }
       }
 
-      async function savePeopleToBin(binId, people) {
+      async function savePeopleToBin(binId, people, winner) {
+        if (people = []) return;
         try {
           const response = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
             method: 'PUT',
@@ -215,7 +246,7 @@
               'X-Access-Key': JSONBIN_ACCESS_KEY,
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ people })
+            body: JSON.stringify({ people, lastWinner: winner })
           });
           if (!response.ok) {
             // If bin doesn't exist, create it
@@ -227,7 +258,7 @@
                 'X-Bin-Name': binId,
                 'Content-Type': 'application/json'
               },
-              body: JSON.stringify({ people })
+              body: JSON.stringify({ people, lastWinner: winner})
             });
           }
         } catch (e) {
@@ -285,7 +316,47 @@
         document.getElementById("winnerModal").classList.add("hidden");
       }
 
-      function savePeople() {
+      function updateLastWinner(person) {
+        console.log("EKKEKEKEKEK", person)
+        if (!person) return;
+        
+        lastWinner = person;
+        
+        const widget = document.getElementById("lastWinnerWidget");
+        const content = document.getElementById("lastWinnerContent");
+        
+        const initials = person.name
+          .split(" ")
+          .map((w) => w[0])
+          .join("")
+          .slice(0, 2)
+          .toUpperCase();
+
+        content.innerHTML = `
+          <div class="color-dot w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-black"
+            style="background:${person.color};">${initials}</div>
+          <span class="text-white text-xs tracking-wide truncate max-w-[100px]">${person.name}</span>
+        `;
+        
+        widget.style.display = "block";
+        
+        // Save to storage
+        savePeople(lastWinner);
+      }
+
+      function loadLastWinner() {
+        const savedWinner = loadLastWinnerFromStore();
+        if (savedWinner) {
+          try {
+            lastWinner = savedWinner;
+            updateLastWinner(savedWinner);
+          } catch (e) {
+            console.error("Failed to load last winner:", e);
+          }
+        }
+      }
+
+      function savePeople(winner) {
         const items = [...document.querySelectorAll(".person-item")].map(
           (li) => ({
             id: li.dataset.id,
@@ -294,11 +365,12 @@
             frequency: li.dataset.frequency,
           }),
         );
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+        const data = { people: items, lastWinner: winner };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         
         // Save to JSONBin if a bin ID is present (fire and forget)
         if (binId) {
-          savePeopleToBin(binId, items).catch(e => console.error('Save failed:', e));
+          savePeopleToBin(binId, items, lastWinner).catch(e => console.error('Save failed:', e));
         }
       }
 
@@ -360,7 +432,7 @@
           setTimeout(() => {
             li.remove();
             updateCount();
-            savePeople();
+            savePeople(lastWinner);
             // 🔔 trigger event
             document.dispatchEvent(
               new CustomEvent("personRemoved", {
@@ -405,7 +477,7 @@
         colorInput.value = COLORS[colorIdx % COLORS.length];
 
         updateCount();
-        savePeople();
+        savePeople(lastWinner);
 
         // 🔔 trigger event
         document.dispatchEvent(
@@ -433,6 +505,12 @@
 
       document.getElementById("nameInput").addEventListener("keydown", (e) => {
         if (e.key === "Enter") addPerson();
+      });
+
+      // Listen for winner selection to update the widget
+      document.addEventListener("winnerSelected", (event) => {
+        updateLastWinner(event.detail);
+        loadLastWinner();
       });
     </script>
   </body>
