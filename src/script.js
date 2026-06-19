@@ -85,17 +85,17 @@ async function loadPeople() {
         }
       });
       const data = await response.json();
-      if (data.record && data.record.people) {
-        return data.record.people;
+      if (data.record && data.record.people && data.record.lastWinner) {
+        return [data.record.people, data.record.lastWinner || data.record.people[0]];
       }
     } catch (e) {
       console.error('Failed to load from JSONBin:', e);
     }
   }
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    return [JSON.parse(localStorage.getItem(STORAGE_KEY)).people || [], JSON.parse(localStorage.getItem(STORAGE_KEY)).lastWinner || null];
   } catch {
-    return [];
+    return [[], null];
   }
 }
 
@@ -103,12 +103,15 @@ const people = [];
 
 // Initialize people asynchronously
 (async () => {
-  const loadedPeople = await loadPeople();
+  const [loadedPeople, lastWinner] = await loadPeople();
   loadedPeople.forEach(person => {
     document.dispatchEvent(
       new CustomEvent("personAdded", { detail: person })
     );
   });
+  document.dispatchEvent(
+    new CustomEvent("winnerSelected", { detail: lastWinner }) // I Know, this is a complete mess
+  );
 })();
 
 // --------------------- Events ------------------------
@@ -133,6 +136,11 @@ document.addEventListener("personNotAvailable", (event) => {
 document.addEventListener("personAvailable", (event) => {
   const index = people.findIndex((p) => p.id === event.detail.id);
   if (index !== -1) people[index].unavailable = false;
+});
+
+// Listen for winner selection to update the past winner widget
+document.addEventListener("winnerSelected", (event) => {
+  updatePastWinnerVisual(event.detail);
 });
 // -----------------------------------------------------
 
@@ -300,7 +308,7 @@ document.getElementById("spinBtn").onclick = () => {
 
 window.addEventListener("dblclick", wheel.spin);
 
-async function saveToJsonBin(binId, items) {
+async function saveToJsonBin(binId, items, winner) {
   try {
     const response = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
       method: 'PUT',
@@ -309,7 +317,7 @@ async function saveToJsonBin(binId, items) {
         'X-Access-Key': JSONBIN_ACCESS_KEY,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ people: items })
+      body: JSON.stringify({ people: items, "lastWinner": winner  })
     });
     if (!response.ok) {
       // Try creating the bin if it doesn't exist
@@ -320,7 +328,7 @@ async function saveToJsonBin(binId, items) {
           'X-Access-Key': JSONBIN_ACCESS_KEY,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ people: items })
+        body: JSON.stringify({ people: items, "lastWinner": winner  })
       });
     }
   } catch (e) {
@@ -328,18 +336,18 @@ async function saveToJsonBin(binId, items) {
   }
 }
 
-function savePeople() {
+function savePeople(winner) {
   const items = [...document.querySelectorAll(".person-item")].map((li) => ({
     id: li.dataset.id,
     name: li.dataset.name,
     color: li.dataset.color,
     frequency: li.dataset.frequency,
   }));
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({people: items, lastWinner: winner}));
   
   // Save to JSONBin if a bin ID is present (fire and forget)
   if (binId) {
-    saveToJsonBin(binId, items).catch(e => console.error('Save failed:', e));
+    saveToJsonBin(binId, items, winner).catch(e => console.error('Save failed:', e));
   }
 }
 
@@ -388,6 +396,30 @@ const updateDatasetWinnerFrequency = (winner) => {
   li.dataset.frequency = winner.frequency;
 };
 
+const updatePastWinnerVisual = (winner) => {
+  if (!winner) return;
+  
+  const widget = document.getElementById("lastWinnerWidget");
+  const content = document.getElementById("lastWinnerContent");
+  
+  if (!widget || !content) return;
+
+  const initials = winner.name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  content.innerHTML = `
+    <div class="color-dot w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-black"
+      style="background:${winner.color};">${initials}</div>
+    <span class="text-white text-xs tracking-wide truncate max-w-[100px]">${winner.name}</span>
+  `;
+  
+  widget.style.display = "block";
+};
+
 wheel.onFinish = (winner) => {
   if (winner.frequency) winner.frequency++;
   else winner.frequency = 1;
@@ -395,8 +427,9 @@ wheel.onFinish = (winner) => {
 
   updateVisual(winner);
   updateDatasetWinnerFrequency(winner);
+  updatePastWinnerVisual(winner);
   showWinner(winner);
-  savePeople();
+  savePeople(winner);
 };
 
 /**
